@@ -30,47 +30,41 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
 
     try {
       final response = await http.get(url);
-    if (response.statusCode >= 400) {
-      setState(() {
-        _error = 'Unable to fetch data. Please try again later';
-      });
-    }
+      if (response.statusCode >= 400) {
+        setState(() {
+          _error = 'Unable to fetch data. Please try again later';
+        });
+      }
 
-    if (response.body == 'null') {
+      if (response.body == 'null') {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      final Map<String, dynamic> listData = json.decode(response.body);
+      final List<GroceryItem> loadedItems = [];
+      for (var item in listData.entries) {
+        final category = categories.entries
+            .firstWhere((catItem) =>
+                catItem.value.categoryName == item.value['category'])
+            .value;
+        loadedItems.add(GroceryItem(
+            id: item.key,
+            name: item.value['name'],
+            quantity: item.value['quantity'],
+            category: category));
+      }
+
       setState(() {
+        _groceryItems = loadedItems;
         _isLoading = false;
       });
-      return;
-      
-    }
-    final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItem> loadedItems = [];
-    for (var item in listData.entries) {
-      final category = categories.entries
-          .firstWhere(
-              (catItem) => catItem.value.categoryName == item.value['category'])
-          .value;
-      loadedItems.add(GroceryItem(
-          id: item.key,
-          name: item.value['name'],
-          quantity: item.value['quantity'],
-          category: category));
-    }
-
-    setState(() {
-      _groceryItems = loadedItems;
-      _isLoading = false;
-    });
-      
     } catch (e) {
       setState(() {
         _error = 'Something went wrong. Please try again later.';
       });
-
-      
     }
-
-    
   }
 
   void _navigateNewItemScreen() async {
@@ -96,13 +90,11 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
         'shopping-list/${item.id}.json');
 
     final response = await http.delete(url);
-    if (response.statusCode >=400) {
+    if (response.statusCode >= 400) {
       setState(() {
         _groceryItems.insert(index, item);
       });
-      
     }
-
   }
 
   @override
