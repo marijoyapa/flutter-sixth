@@ -6,52 +6,60 @@ import 'package:shopping/models/grocery_list.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class NewItem extends StatelessWidget {
+class NewItem extends StatefulWidget {
   const NewItem({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final _formKey = GlobalKey<FormState>();
+  State<NewItem> createState() => _NewItemState();
+}
 
-    var _enteredName = '';
-    var _enteredQuantity = 1;
-    var selectedCategory = categories[Categories.vegetables]!;
-    var _isSending = false;
+class _NewItemState extends State<NewItem> {
+  final _formKey = GlobalKey<FormState>();
 
-    void submitForm() async {
-      if (_formKey.currentState!.validate()) {
-        _formKey.currentState!.save();
-        final url = Uri.https('flutter-first-6706c-default-rtdb.firebaseio.com',
-            'shopping-list.json');
-        final response = await http.post(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
+  var _enteredName = '';
+  var _enteredQuantity = 1;
+  var selectedCategory = categories[Categories.vegetables]!;
+  var _isSending = false;
+
+  void submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      setState(() {
+        _isSending = true;
+      });
+      final url = Uri.https('flutter-first-6706c-default-rtdb.firebaseio.com',
+          'shopping-list.json');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(
+          {
+            'name': _enteredName,
+            'quantity': _enteredQuantity,
+            'category': selectedCategory.categoryName,
           },
-          body: json.encode(
-            {
-              'name': _enteredName,
-              'quantity': _enteredQuantity,
-              'category': selectedCategory.categoryName,
-            },
-          ),
-        );
+        ),
+      );
 
-        if (!context.mounted) {
-          return;
-        }
-        final Map<String, dynamic>resData = json.decode(response.body);
-
-        Navigator.of(context).pop(
-          GroceryItem(
-              id: resData['name'],
-              name: _enteredName,
-              quantity: _enteredQuantity,
-              category: selectedCategory),
-        );
+      if (!context.mounted) {
+        return;
       }
-    }
+      final Map<String, dynamic> resData = json.decode(response.body);
 
+      Navigator.of(context).pop(
+        GroceryItem(
+            id: resData['name'],
+            name: _enteredName,
+            quantity: _enteredQuantity,
+            category: selectedCategory),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add a new item'),
@@ -128,9 +136,9 @@ class NewItem extends StatelessWidget {
                               )
                           ],
                           onChanged: (value) {
-                            // setState(() {
-                            selectedCategory = value!;
-                            // });
+                            setState(() {
+                              selectedCategory = value!;
+                            });
                           }),
                     ),
                   ],
@@ -143,13 +151,19 @@ class NewItem extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: () {
-                        _formKey.currentState!.reset();
+                        _isSending ? null : _formKey.currentState!.reset();
                       },
                       child: const Text('Reset'),
                     ),
                     ElevatedButton(
-                      onPressed: submitForm,
-                      child: const Text('Add item'),
+                      onPressed: _isSending ? null : submitForm,
+                      child: _isSending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(),
+                            )
+                          : const Text('Add item'),
                     ),
                   ],
                 )

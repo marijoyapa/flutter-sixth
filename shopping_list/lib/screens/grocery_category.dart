@@ -15,8 +15,8 @@ class GroceryCategoriesScreen extends StatefulWidget {
 
 class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
   List<GroceryItem> _groceryItems = [];
-
   var _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -27,8 +27,22 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
   void _loadItems() async {
     final url = Uri.https('flutter-first-6706c-default-rtdb.firebaseio.com',
         'shopping-list.json');
-    final response = await http.get(url);
-    // print(response.body);
+
+    try {
+      final response = await http.get(url);
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = 'Unable to fetch data. Please try again later';
+      });
+    }
+
+    if (response.body == 'null') {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+      
+    }
     final Map<String, dynamic> listData = json.decode(response.body);
     final List<GroceryItem> loadedItems = [];
     for (var item in listData.entries) {
@@ -42,10 +56,21 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
           quantity: item.value['quantity'],
           category: category));
     }
+
     setState(() {
       _groceryItems = loadedItems;
       _isLoading = false;
     });
+      
+    } catch (e) {
+      setState(() {
+        _error = 'Something went wrong. Please try again later.';
+      });
+
+      
+    }
+
+    
   }
 
   void _navigateNewItemScreen() async {
@@ -62,24 +87,33 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
     });
   }
 
-  void _removeItem(item) {
+  void _removeItem(item) async {
+    final index = _groceryItems.indexOf(item);
     setState(() {
       _groceryItems.remove(item);
     });
+    final url = Uri.https('flutter-first-6706c-default-rtdb.firebaseio.com',
+        'shopping-list/${item.id}.json');
+
+    final response = await http.delete(url);
+    if (response.statusCode >=400) {
+      setState(() {
+        _groceryItems.insert(index, item);
+      });
+      
+    }
+
   }
 
   @override
   Widget build(BuildContext context) {
     Widget content = const Center(
-      child: Text(
-        'No items added yet...',
-        style: TextStyle(
-          fontSize: 20,
-        ),
-      ),
+      child: Text('No items added yet...'),
     );
     if (_isLoading) {
-      content = Center(child: CircularProgressIndicator(),);
+      content = const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     if (_groceryItems.isNotEmpty) {
@@ -104,6 +138,12 @@ class _GroceryCategoriesScreenState extends State<GroceryCategoriesScreen> {
             ),
           ),
         ),
+      );
+    }
+
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
       );
     }
 
